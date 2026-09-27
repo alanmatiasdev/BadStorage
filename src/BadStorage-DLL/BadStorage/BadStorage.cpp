@@ -3,6 +3,10 @@
 
 #include "stdafx.h"
 #include "BadStorage.h"
+#include "UnauthDisk.h"
+
+CHAR LogBuffer[0x2000];
+ULONG LogLength = 0;
 
 VOID Print(const PCHAR Format, ...)
 {
@@ -28,6 +32,24 @@ VOID Print(const PCHAR Format, ...)
 	}
 
 	DbgPrint("[%d/%d/%d %02d:%02d:%02d %s] %s\n", time.wMonth, time.wDay, time.wYear, time.wHour, time.wMinute, time.wSecond, am ? "AM" : "PM", formatStr);
+
+	SIZE_T length = strlen(formatStr);
+	if (LogLength + length + 2 <= sizeof(LogBuffer))
+	{
+		memcpy(LogBuffer + LogLength, formatStr, length);
+		LogBuffer[LogLength + length] = '\r';
+		LogBuffer[LogLength + length + 1] = '\n';
+		LogLength += length + 2;
+	}
+}
+
+VOID SaveLog()
+{
+	HANDLE file = CreateFile(BADSTORAGE_LOG_PATH, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE) return;
+	DWORD written;
+	WriteFile(file, LogBuffer, LogLength, &written, NULL);
+	CloseHandle(file);
 }
 
 HANDLE OpenDisk(const PSZ Path, BOOLEAN ReadOnly)
@@ -105,7 +127,7 @@ BOOL APIENTRY DllMain(HANDLE hModule, DWORD ul_reason_for_call, LPVOID lpReserve
     return TRUE;
 }
 
-EXTERN_C BOOLEAN Execute(PBOOLEAN IsRetailFormatted)
+BOOLEAN ExecuteInternal(PBOOLEAN IsRetailFormatted)
 {
 	Print("Bad Storage");
 	Print("Created by Eaton");
@@ -154,8 +176,15 @@ EXTERN_C BOOLEAN Execute(PBOOLEAN IsRetailFormatted)
 		}
 		else
 		{
+			#ifdef UNAUTH_DISK_SUPPORTED
+			//No security sector: initialize and announce the disk ourselves (see UnauthDisk.h).
+			//On a later execution in the same boot the HDD flag is set, so the regular path below runs and reports "not BSTOR" (skipped).
+			Print("Disk not genuine. Trying unauthenticated disk support.");
+			return UnauthDiskActivate();
+			#else
 			Print("Disk not genuine.");
 			XNotifyQueueUI(XNOTIFYUI_TYPE_AVOID_REVIEW, XUSER_INDEX_ANY, XNOTIFYUI_PRIORITY_HIGH, L"BadStorage FAILURE: Disk not genuine/flashed. Flash using FATXplorer.", 0);
+			#endif
 		}
 		return FALSE;
 	}
@@ -277,5 +306,14 @@ EXTERN_C BOOLEAN Execute(PBOOLEAN IsRetailFormatted)
 	if (phyDiskDeviceObject != NULL) ObDereferenceObject(phyDiskDeviceObject);
 	if (p0DeviceObject != NULL) ObDereferenceObject(p0DeviceObject);
 	if (p1DeviceObject != NULL) ObDereferenceObject(p1DeviceObject);
+	return ret;
+}
+
+EXTERN_C BOOLEAN Execute(PBOOLEAN IsRetailFormatted)
+{
+	LogLength = 0;
+	BOOLEAN ret = ExecuteInternal(IsRetailFormatted);
+	Print("Result: %s", ret ? "applied" : (IsRetailFormatted != NULL && *IsRetailFormatted) ? "skipped" : "failed");
+	SaveLog();
 	return ret;
 }

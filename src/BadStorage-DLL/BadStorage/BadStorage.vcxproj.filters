@@ -20,12 +20,18 @@
     <ClInclude Include="BadStorage.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="UnauthDisk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="BadStorage.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="UnauthDisk.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

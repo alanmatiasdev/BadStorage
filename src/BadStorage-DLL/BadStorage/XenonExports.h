@@ -891,6 +891,19 @@ EXTERN_C
 	XeKeysGetStatus(
 		OUT PDWORD StatusFlags
     );
+
+	NTSTATUS
+	XexGetModuleHandle(
+		IN PSZ ModuleName,
+		OUT PHANDLE ModuleHandle
+    );
+
+	NTSTATUS
+	XexGetProcedureAddress(
+		IN HANDLE ModuleHandle,
+		IN DWORD Ordinal,
+		OUT PVOID ProcedureAddress
+    );
 }
 
 #pragma endregion External Procedures

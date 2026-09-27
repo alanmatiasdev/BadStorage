@@ -5,6 +5,7 @@
 
 #define BADSTORAGE_VERSION 1 //Keep this in sync with BadStorage.xml and BASE_VER & UPDATE_VER environment variables.
 #define BSTOR_INDICATOR    0x4253544F52414745 //FATXplorer adds "BSTORAGE" to offset 0x858 in the boot sector so it can properly identify this type of storage device.
+#define BADSTORAGE_LOG_PATH "GAME:\\BadStorage.log" //Every Print of an execution is saved here (overwritten each run), since there is usually no debugger attached this early.
 
 /*
 	The RDFC patch updates FatxProcessBootSector to always use a value of 1 for the root directory first cluster.

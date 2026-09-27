@@ -8,6 +8,17 @@ The DLL is not a system module. It should be loaded, executed, and then unloaded
 
 **For those who do not code and just want to download/use Bad Storage:** it is built into the latest version of <a href="https://github.com/Byrom90/XeUnshackle">XeUnshackle</a>, so just download that and it is all you need. Make sure to format your drive using FATXplorer as well.
 
+# Unauthenticated disk support (this fork)
+
+The retail DLL can also enable an internal disk **without** an Xbox 360 security sector (e.g. an SSD the FATXplorer SSD Maker does not support), on retail kernel 17559. When the disk is identified but not genuine, instead of failing with "Disk not genuine/flashed", `Execute` does in RAM what `SataDiskInitialize` skipped at boot: it fills in the partition geometry, clears `DO_DEVICE_INITIALIZING`, sets `XBOX_HW_FLAG_HDD`, registers the disk's shutdown routine (FLUSH CACHE + STANDBY IMMEDIATE), and announces the disk with `XContent::DeviceProcessAddRemove`. Details are in `UnauthDisk.h`.
+
+- Retail 17559 only. Every address is checked first (kernel export addresses, a SHA-256 of `SataDiskInitialize`, the `\Device\Harddisk0` directory layout, and the xam function prologues). On any mismatch, it aborts before writing anything.
+- Nothing is written to flash. A cold boot undoes it, so it runs again on every boot (XeUnshackle does this automatically).
+- The disk is used as the console formats it (Settings > System > Storage), not the Bad Storage (BSTOR) format.
+- Avatars on the disk do not work: the disk key is set in the hypervisor once per boot, before the exploit. The disk cannot be used as an exploit entry point either.
+- Each execution writes its log to `GAME:\BadStorage.log` (the `BadUpdatePayload` folder when loaded by XeUnshackle).
+- Genuine and BSTOR-formatted disks follow the original path unchanged.
+
 # Compiling
 
 The recommended development environment is:

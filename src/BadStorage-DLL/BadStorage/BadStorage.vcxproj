@@ -158,6 +158,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="XenonExports.h" />
     <ClInclude Include="BadStorage.h" />
+    <ClInclude Include="UnauthDisk.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -166,6 +167,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Xbox 360'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="BadStorage.cpp" />
+    <ClCompile Include="UnauthDisk.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="BadStorage.def" />
