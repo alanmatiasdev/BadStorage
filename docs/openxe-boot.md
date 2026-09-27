@@ -1,31 +1,31 @@
-# Inicialização local do SSD sem XDK
+# Local SSD boot without the Xbox SDK
 
-Este caminho não usa a VM Windows 7, SDK da Microsoft, JRPC ou rede durante o
-boot. `BadStorageBoot.xex` é um título Xbox 360 compilado com OpenXeChain. Ele
-confere o kernel retail 17559, restaura em RAM a inicialização das partições
-do disco não autenticado, anuncia o HDD ao `xam` e tenta abrir o Aurora. O
-patch é efêmero: um boot frio exige executá-lo novamente. Nada é gravado no
-flash ou no SSD pelo patch.
+This path does not use the Windows 7 VM, the Microsoft SDK, JRPC, or a network
+connection during boot. `BadStorageBoot.xex` is an Xbox 360 title compiled with
+OpenXeChain. It checks retail kernel 17559, restores the initialization of the
+unauthenticated disk partitions in RAM, announces the HDD to `xam`, and then
+launches Aurora. The patch is temporary: a cold boot runs the title again.
+Nothing is written to flash or to the SSD by the patch.
 
-**Estado: experimental, validado manualmente.** A v5 ativou o SSD, carregou os
-jogos e passou pelo ciclo de jogo/retorno ao Aurora com GTA V. O `launch.ini`
-foi então configurado para iniciar a v5 automaticamente; o backup original
-está em `USB0:\launch.ini.aurora-backup`. Ainda falta confirmar um boot frio
-com essa configuração automática.
+**Status: experimental and manually validated.** Version v5 enabled the SSD,
+loaded games, and passed the game/return-to-Aurora cycle with GTA V. The
+`launch.ini` was then configured to start v5 automatically; the original
+configuration is backed up at `USB0:\launch.ini.aurora-backup`. A cold boot with
+the automatic configuration should still be confirmed after deployment.
 
-O slot `BadStorage.xex.dll` do XeUnshackle não pode receber este arquivo:
-SynthXEX ainda não gera exports DLL (o slot requer ordinal 1). O XEX é uma
-segunda etapa, depois do XeUnshackle, através do `Default` do DashLaunch.
-Um script Lua do Aurora também não serve para este patch: a API de scripts
-não expõe as leituras/escritas e as chamadas nativas necessárias.
+The XeUnshackle `BadStorage.xex.dll` slot cannot load this file: SynthXEX does
+not yet generate DLL exports, while that slot requires ordinal 1. This XEX is a
+second stage launched through DashLaunch's `Default` entry after XeUnshackle.
+An Aurora Lua script cannot perform this patch either because its scripting API
+does not expose the required memory access and native calls.
 
-## Compilação no Linux
+## Building on Linux
 
-Instale Clang, CMake, Ninja, Git e compiladores C/C++ no computador de build.
-A VM Windows 7 pode ficar desligada. O build oficial completo da OpenXeChain
-está em <https://github.com/OpenXeChain/buildscript>; o build mínimo abaixo
-foi usado para gerar este XEX sem Newlib, pois `boot.c` é freestanding.
-Reserve alguns GB e tempo para a compilação do LLVM.
+Install Clang, CMake, Ninja, Git, and C/C++ build tools on the build computer.
+The Windows 7 VM can remain powered off. The full official OpenXeChain build
+is documented at <https://github.com/OpenXeChain/buildscript>; the minimal build
+below was used to produce this freestanding XEX without Newlib. Reserve several
+GB of disk space and enough time to build LLVM.
 
 ```sh
 git clone --filter=blob:none --sparse https://github.com/OpenXeChain/llvm.git /tmp/badstorage-openxe-llvm
@@ -49,13 +49,13 @@ cmake --install /tmp/badstorage-openxe-synthxex-build
 OPENXE_PREFIX=/tmp/badstorage-openxe-sdk bash src/BadStorage-OpenXe/build.sh
 ```
 
-Saída: `src/BadStorage-OpenXe/build/BadStorageBoot.xex`. Foram testados os
-commits OpenXeChain/llvm `890b83f6c8259a8899e182a5f7d9cf39c64131cc` e
-SynthXEX `4bda05e21e3f6384ac447f8db3103a0a15b96887`. Se usar revisões
-futuras, confira novamente o arquivo gerado. Com endereço-base `0x82000000`,
-o verificador de XEX acusou hash inválido e o console não executou o código;
-com `0x92000000`, o hash validou e o código rodou. A causa exata da rejeição
-do primeiro XEX pelo loader não foi isolada. Para os testes de lógica no host:
+Output: `src/BadStorage-OpenXe/build/BadStorageBoot.xex`. The tested commits
+were OpenXeChain/llvm `890b83f6c8259a8899e182a5f7d9cf39c64131cc` and SynthXEX
+`4bda05e21e3f6384ac447f8db3103a0a15b96887`. Recheck the generated file when
+using newer revisions. A base address of `0x82000000` produced an invalid image
+hash and the console did not execute that XEX; `0x92000000` produced a valid
+hash and ran correctly. The exact reason the first XEX was rejected by the
+loader was not isolated. Run the host logic tests with:
 
 ```sh
 clang -std=c11 -O2 -Wall -Wextra -Werror \
@@ -63,20 +63,20 @@ clang -std=c11 -O2 -Wall -Wextra -Werror \
 /tmp/badstorage-openxe-test
 ```
 
-## Instalação e teste
+## Installation and testing
 
-No console em estudo, o Aurora fica em `USB0:\Apps\Aurora\Aurora.xex`; o
-`launch.ini` atual diz `Default = Usb:\Apps\Aurora\Aurora.xex`. O XEX usa
-`GAME:\Aurora.xex` para voltar ao Aurora e grava o diagnóstico em
-`GAME:\BadStorageBoot.log`; mantenha-o na mesma pasta do Aurora.
+On the test console, Aurora is located at `USB0:\Apps\Aurora\Aurora.xex` and
+the original `launch.ini` uses `Default = Usb:\Apps\Aurora\Aurora.xex`. The
+XEX launches `GAME:\Aurora.xex` and writes diagnostics to
+`GAME:\BadStorageBoot.log`; keep it in the same directory as Aurora.
 
-1. Guarde uma cópia de `USB0:\launch.ini`. O utilitário de transferência abaixo
-   funciona apenas durante a instalação; ele não é usado no boot:
+1. Save a copy of `USB0:\launch.ini`. The transfer utility is only used during
+   installation; it is not needed at boot.
 
-   Defina `XBOX_HOST` apenas no computador local (não o versione):
+   Define `XBOX_HOST` only on the local computer; do not commit its value:
 
    ```sh
-   export XBOX_HOST=<endereco-do-xbox>
+   export XBOX_HOST=<xbox-address>
    ```
 
    ```sh
@@ -84,8 +84,8 @@ No console em estudo, o Aurora fica em `USB0:\Apps\Aurora\Aurora.xex`; o
      'USB0:\launch.ini' /tmp/badstorage-launch.ini.backup
    ```
 
-2. Envie o XEX com um nome novo; o utilitário recusa substituir um arquivo
-   remoto existente e compara todos os bytes após o upload:
+2. Upload the XEX under a new name. The utility refuses to replace an existing
+   remote file and compares every byte after upload:
 
    ```sh
    python3 tools/xbdm-file.py --host "$XBOX_HOST" put-new \
@@ -93,35 +93,36 @@ No console em estudo, o Aurora fica em `USB0:\Apps\Aurora\Aurora.xex`; o
      'USB0:\Apps\Aurora\BadStorageBoot.xex'
    ```
 
-3. Com o SSD desativado após boot frio, inicie `BadStorageBoot.xex`
-   manualmente e confirme o ciclo completo: `Hdd1` acessível, jogo funcionando
-   e retorno estável ao Aurora. Leia `GAME:\BadStorageBoot.log`: `OK` indica somente
-   que a ativação terminou, **não** que a troca de título funcionou. `E01` a
-   `E18` indicam a pré-condição que falhou em `activate()`. Se houver tela
-   preta ou crash, desligue e ligue o console; o `Default` original preserva
-   o caminho de recuperação. Não configure o boot automático nesse caso.
+3. With the SSD disabled after a cold boot, launch `BadStorageBoot.xex`
+   manually and confirm the complete cycle: `Hdd1` is accessible, a game runs,
+   and the console returns to Aurora reliably. Read `GAME:\BadStorageBoot.log`:
+   `OK` only means activation completed; it does **not** prove that the title
+   switch succeeded. `E01` through `E18` identify a failed precondition in
+   `activate()`. If the screen goes black or crashes, power-cycle the console;
+   the original `Default` entry is the recovery path. Do not enable automatic
+   boot in that case.
 
-4. Depois de validar repetidamente a ativação **e** o retorno ao Aurora, a
-   linha `Default` do `launch.ini` deve ser:
+4. After repeatedly validating activation **and** returning to Aurora, set the
+   `Default` line in `launch.ini` to:
 
    ```ini
    Default = Usb:\Apps\Aurora\BadStorageBoot.xex
    ```
 
-   Preserve todas as demais linhas; não é preciso `plugin` XBDM/JRPC. Guarde
-   no USB também uma cópia da configuração anterior. Desligue totalmente o
-   Xbox, ligue-o e percorra ABadAvatar → XeUnshackle → DashLaunch. O XEX deve
-   aplicar o patch e abrir Aurora sem conexão externa. Confirme que `Hdd1`
-   aparece e que os jogos estão acessíveis.
+   Preserve every other line; no XBDM/JRPC plugin is required at boot. Keep a
+   backup of the previous configuration on the USB drive. Power the Xbox off
+   completely, turn it on, follow ABadAvatar → XeUnshackle → DashLaunch, and
+   confirm that the XEX applies the patch and opens Aurora without an external
+   connection. Verify that `Hdd1` appears and that the games are accessible.
 
-5. Para reverter, restaure `Default = Usb:\Apps\Aurora\Aurora.xex` usando a
-   cópia do `launch.ini` (ou edite o USB num computador). Se o título novo
-   falhar ao abrir, o pendrive continua editável fora do Xbox; não há escrita
-   na NAND.
+5. To revert, restore `Default = Usb:\Apps\Aurora\Aurora.xex` from the backup
+   or edit the USB drive on a computer. If the new title fails to launch, the
+   USB remains editable outside the Xbox; nothing is written to NAND.
 
-O código valida endereços de exports, build do kernel, SHA-256 de
-`SataDiskInitialize`, layout do diretório `Harddisk0` e prólogos das funções
-do `xam` antes da primeira gravação. A geometria é escrita antes de limpar
-`DO_DEVICE_INITIALIZING`, na ordem do kernel. Não use o XEX em outro kernel
-sem portar e validar todos os offsets. Mesmo com o disco montado, o problema
-de avatars/chave de disco no hypervisor permanece fora do escopo deste patch.
+The code validates export addresses, the kernel build, a SHA-256 digest of
+`SataDiskInitialize`, the `Harddisk0` directory layout, and `xam` function
+prologues before its first write. Geometry is written before clearing
+`DO_DEVICE_INITIALIZING`, in the same order as the kernel. Do not use this XEX
+on another kernel without porting and validating every offset. Even with the
+disk mounted, the hypervisor disk-key/avatar limitation remains outside this
+patch's scope.
