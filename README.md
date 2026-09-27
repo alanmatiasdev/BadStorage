@@ -1,5 +1,18 @@
 # Xbox 360 Bad Storage
 
+## Standalone boot path without the Xbox SDK
+
+The experimental OpenXeChain title in [src/BadStorage-OpenXe](src/BadStorage-OpenXe)
+activates an unauthenticated internal disk locally and attempts to launch Aurora.
+The SSD activation and Aurora launch were verified on retail 17559, but the
+console froze when returning from GTA San Andreas to Aurora. The cause is not
+yet isolated. Do not set this title as DashLaunch's `Default` until the full
+game/return flow is validated.
+Once stable, no PC or network will be needed at boot. See
+[docs/openxe-boot.md](docs/openxe-boot.md) for build, validation, and recovery
+instructions. This is separate from the upstream
+`BadStorage.xex.dll` entry point; SynthXEX does not yet support DLL exports.
+
 For more information, check out the official project page: https://fatxplorer.eaton-works.com/bad-storage/
 
 Bad Storage comes in 2 flavors: XEX and DLL. The XEX version is for when you want to have a convenient, launchable executable. The DLL is for developers who want to add Bad Storage to their homebrew apps or launchers.

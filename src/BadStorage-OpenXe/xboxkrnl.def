@@ -1,0 +1,4 @@
+LIBRARY xboxkrnl.exe@21256.0+1861.0
+EXPORTS
+	XexGetModuleHandle @405
+	XexGetProcedureAddress @407
