@@ -6,6 +6,10 @@
 
 #ifdef UNAUTH_DISK_SUPPORTED
 
+#ifndef ARRAYSIZE
+#define ARRAYSIZE(Array) (sizeof(Array) / sizeof((Array)[0]))
+#endif
+
 #define SATA_DISK_INITIALIZE_OFFSET       0x8015DB18
 #define SATA_DISK_INITIALIZE_LENGTH       0x5FC
 #define SATA_DISK_POWER_DOWN_REGISTRATION 0x80170B90
@@ -210,8 +214,14 @@ BOOLEAN UnauthDiskActivateInternal(PVOID* References, PULONG ReferenceCount, PUL
 	Sha256((const UCHAR*)SATA_DISK_INITIALIZE_OFFSET, SATA_DISK_INITIALIZE_LENGTH, digest);
 	if (memcmp(digest, SATA_DISK_INITIALIZE_SHA256, sizeof(digest)) != 0)
 	{
+		const CHAR* hexDigits = "0123456789abcdef";
 		CHAR hex[65];
-		for (int i = 0; i < 32; i++) sprintf(hex + i * 2, "%02x", digest[i]);
+		for (int i = 0; i < 32; i++)
+		{
+			hex[i * 2] = hexDigits[digest[i] >> 4];
+			hex[i * 2 + 1] = hexDigits[digest[i] & 0xF];
+		}
+		hex[64] = '\0';
 		FAIL(L"BadStorage FAILURE: SataDiskInitialize differs. Nothing was changed.", "SataDiskInitialize SHA-256 mismatch: %s", hex);
 	}
 
@@ -256,6 +266,9 @@ BOOLEAN UnauthDiskActivateInternal(PVOID* References, PULONG ReferenceCount, PUL
 	DWORD rawDump = ((pfnDumpGetRawDumpInfo)exports[EXPORT_DUMP_GET_RAW_DUMP_INFO])(dumpInfo, 0);
 	Print("Power-down list: %u entries, SATA disk %s. DumpGetRawDumpInfo: 0x%X", powerDownCount, powerDownRegistered ? "registered" : "not registered", rawDump);
 
+	if (*(PULONG)XContentDeviceProcessAddRemove_Offset != XAM_PROLOGUE_MFLR_R12 || *(PULONG)BroadcastStorageDevicesChanged_Offset != XAM_PROLOGUE_MFLR_R12)
+		FAIL(L"BadStorage FAILURE: Unexpected xam version. Nothing was changed.", "xam functions do not start with mflr r12.");
+
 	//From here on, memory is written. Same order as the kernel: geometry first, then clear DO_DEVICE_INITIALIZING.
 	for (ULONG i = 0; i < deviceCount; i++)
 	{
@@ -296,9 +309,6 @@ BOOLEAN UnauthDiskActivateInternal(PVOID* References, PULONG ReferenceCount, PUL
 	REFERENCE(PARTITION_1_PATH, IoDeviceObjectType, p1DeviceObject);
 	if (p1DeviceObject == NULL) FAIL(L"BadStorage FAILURE: Partition1 did not initialize.", "Partition1 still does not resolve: 0x%08X", status);
 
-	if (*(PULONG)XContentDeviceProcessAddRemove_Offset != XAM_PROLOGUE_MFLR_R12 || *(PULONG)BroadcastStorageDevicesChanged_Offset != XAM_PROLOGUE_MFLR_R12)
-		FAIL(L"BadStorage FAILURE: Unexpected xam version.", "xam functions do not start with mflr r12.");
-
 	XContent_DEVICEADDREMOVETASK task;
 	task.pszDevicePath = PARTITION_1_PATH;
 	task.Action = DEVICESTATE_ADD;
@@ -337,9 +347,18 @@ BOOLEAN UnauthDiskActivate()
 
 	if (ret)
 	{
+		const WCHAR* prefix = L"BadStorage: Unauthenticated disk enabled (";
+		const WCHAR* suffix = L" GB).";
 		WCHAR notice[64];
-		_snwprintf(notice, ARRAYSIZE(notice) - 1, L"BadStorage: Unauthenticated disk enabled (%u GB).", (ULONG)(diskSize / 1000000000));
-		notice[ARRAYSIZE(notice) - 1] = L'\0';
+		ULONG length = 0;
+		for (ULONG i = 0; prefix[i] != L'\0'; i++) notice[length++] = prefix[i];
+		WCHAR number[12];
+		ULONG digits = 0;
+		ULONG gigabytes = (ULONG)(diskSize / 1000000000);
+		do { number[digits++] = (WCHAR)(L'0' + gigabytes % 10); gigabytes /= 10; } while (gigabytes != 0);
+		while (digits != 0) notice[length++] = number[--digits];
+		for (ULONG i = 0; suffix[i] != L'\0'; i++) notice[length++] = suffix[i];
+		notice[length] = L'\0';
 		XNotifyQueueUI(XNOTIFYUI_TYPE_AVOID_REVIEW, XUSER_INDEX_ANY, XNOTIFYUI_PRIORITY_HIGH, notice, 0);
 		Print("Unauthenticated disk activated successfully.");
 	}
